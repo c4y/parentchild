@@ -12,6 +12,9 @@
  */
 
 
+$GLOBALS['TL_PERMISSIONS'][] = 'obdapol';
+$GLOBALS['TL_PERMISSIONS'][] = 'obdapolp';
+
 /**
  * BACK END MODULES
  *

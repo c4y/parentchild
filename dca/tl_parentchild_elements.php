@@ -24,6 +24,7 @@ $GLOBALS['TL_DCA']['tl_parentchild_elements'] = array
         'dataContainer'               => 'Table',
         'ptable'                      => 'tl_parentchild',
         'switchToEdit'                => true,
+        'enableVersioning'            => true,
 		'sql' => array
 		(
 			'keys' => array
