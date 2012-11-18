@@ -1,16 +1,5 @@
 <?php 
 
-/**
- * Contao Open Source CMS
- * 
- * Copyright (C) 2005-2012 Leo Feyer
- * 
- * @package   GalleryXT 
- * @author    Oliver Lohoff 
- * @license   LGPL 
- * @copyright Oliver Lohoff 
- */
-
 
 /**
  * Table tl_parentchild_elements
@@ -25,6 +14,10 @@ $GLOBALS['TL_DCA']['tl_parentchild_elements'] = array
         'ptable'                      => 'tl_parentchild',
         'switchToEdit'                => true,
         'enableVersioning'            => true,
+        'onload_callback' => array
+        (
+            array('tl_parentchild_elements', 'checkPermission'),
+        ),
 		'sql' => array
 		(
 			'keys' => array
@@ -110,7 +103,9 @@ $GLOBALS['TL_DCA']['tl_parentchild_elements'] = array
 );
 
 
-class tl_parentchild_elements extends Backend {
+
+class tl_parentchild_elements extends Backend
+{
 
     /**
      * Import the back end user object
@@ -121,13 +116,118 @@ class tl_parentchild_elements extends Backend {
         $this->import('BackendUser', 'User');
     }
 
-
     public function listElements($arrRow)
     {
         return $arrRow['title'];
     }
 
+    /**
+     * Check permissions to edit table tl_news
+     */
+    public function checkPermission()
+    {
 
+        if ($this->User->isAdmin)
+        {
+            return;
+        }
 
+        // Set the root IDs
+        if (!is_array($this->User->parentchild) || empty($this->User->parentchild))
+        {
+            $root = array(0);
+        }
+        else
+        {
+            $root = $this->User->parentchild;
+        }
 
+        $id = strlen(Input::get('id')) ? Input::get('id') : CURRENT_ID;
+
+        // Check current action
+        switch (Input::get('act'))
+        {
+            case 'paste':
+                // Allow
+                break;
+
+            case 'create':
+                if (!strlen(Input::get('pid')) || !in_array(Input::get('pid'), $root))
+                {
+                    $this->log('Not enough permissions to create parentchild elements in parentchild ID "'.Input::get('pid').'"', 'tl_parentchild_elements checkPermission', TL_ERROR);
+                    $this->redirect('contao/main.php?act=error');
+                }
+                break;
+
+            case 'cut':
+            case 'copy':
+                if (!in_array(Input::get('pid'), $root))
+                {
+                    $this->log('Not enough permissions to '.Input::get('act').' parentchild item ID "'.$id.'" to parentchild elements ID "'.Input::get('pid').'"', 'tl_parentchild_elements checkPermission', TL_ERROR);
+                    $this->redirect('contao/main.php?act=error');
+                }
+            // NO BREAK STATEMENT HERE
+
+            case 'edit':
+            case 'show':
+            case 'delete':
+            case 'toggle':
+            case 'feature':
+                $objArchive = $this->Database->prepare("SELECT pid FROM tl_news WHERE id=?")
+                    ->limit(1)
+                    ->execute($id);
+
+                if ($objArchive->numRows < 1)
+                {
+                    $this->log('Invalid parentchild ID "'.$id.'"', 'tl_parentchild_elements checkPermission', TL_ERROR);
+                    $this->redirect('contao/main.php?act=error');
+                }
+
+                if (!in_array($objArchive->pid, $root))
+                {
+                    $this->log('Not enough permissions to '.Input::get('act').' parentchild elements ID "'.$id.'" of parentchild ID "'.$objArchive->pid.'"', 'tl_parentchild_elements checkPermission', TL_ERROR);
+                    $this->redirect('contao/main.php?act=error');
+                }
+                break;
+
+            case 'select':
+            case 'editAll':
+            case 'deleteAll':
+            case 'overrideAll':
+            case 'cutAll':
+            case 'copyAll':
+                if (!in_array($id, $root))
+                {
+                    $this->log('Not enough permissions to access parentchild ID "'.$id.'"', 'tl_parentchild checkPermission', TL_ERROR);
+                    $this->redirect('contao/main.php?act=error');
+                }
+
+                $objArchive = $this->Database->prepare("SELECT id FROM tl_news WHERE pid=?")
+                    ->execute($id);
+
+                if ($objArchive->numRows < 1)
+                {
+                    $this->log('Invalid parentchild ID "'.$id.'"', 'tl_parentchild_elements checkPermission', TL_ERROR);
+                    $this->redirect('contao/main.php?act=error');
+                }
+
+                $session = $this->Session->getData();
+                $session['CURRENT']['IDS'] = array_intersect($session['CURRENT']['IDS'], $objArchive->fetchEach('id'));
+                $this->Session->setData($session);
+                break;
+
+            default:
+                if (strlen(Input::get('act')))
+                {
+                    $this->log('Invalid command "'.Input::get('act').'"', 'tl_parentchild_elements checkPermission', TL_ERROR);
+                    $this->redirect('contao/main.php?act=error');
+                }
+                elseif (!in_array($id, $root))
+                {
+                    $this->log('Not enough permissions to access parentchild ID ' . $id, 'tl_parentchild_elements checkPermission', TL_ERROR);
+                    $this->redirect('contao/main.php?act=error');
+                }
+                break;
+        }
+    }
 }

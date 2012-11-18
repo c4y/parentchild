@@ -114,7 +114,7 @@ class tl_parentchild extends Backend
 
 
     /**
-     * Check permissions to edit table tl_parentchild_archive
+     * Check permissions to edit table tl_parentchild
      */
     public function checkPermission()
     {
